@@ -1,0 +1,187 @@
+.review-card {
+  background: #ffffff;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  transition: box-shadow 0.3s ease;
+}
+
+.review-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.review-header {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.review-avatar {
+  margin-right: 16px;
+  background-color: #d9d9d9;
+  flex-shrink: 0;
+}
+
+.review-details {
+  flex-grow: 1;
+}
+
+.review-author {
+  display: block;
+  font-size: 16px;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.review-rating-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.review-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-rating-text {
+  font-size: 16px;
+  color: #333;
+}
+
+.review-date {
+  font-size: 13px;
+  color: #888;
+}
+
+.review-comment-container {
+  margin-top: 8px;
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  min-height: 60px;
+  line-height: 1.5;
+}
+
+.review-comment {
+  font-size: 15px;
+  color: #333;
+}
+
+.review-images-container {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.review-image {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.review-image:hover {
+  transform: scale(1.05);
+}
+
+.review-list {
+  max-width: 100%;
+}
+
+.no-reviews {
+  color: #888;
+  text-align: center;
+  padding: 20px;
+}
+
+.review-title {
+  margin-bottom: 16px;
+  color: #1a1a1a;
+}
+
+.image-preview-modal .preview-image {
+  width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+}
+
+/* Custom Toast Styles */
+.custom-toast-overlay {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.custom-toast {
+  animation: slideIn 0.3s ease-out;
+  transition: all 0.3s ease;
+}
+
+.custom-toast:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2) !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.custom-toast button {
+  transition: all 0.2s ease;
+}
+
+.custom-toast button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.custom-toast button:active {
+  transform: translateY(0);
+}
+
+/* Product image in toast */
+.custom-toast img {
+  transition: transform 0.2s ease;
+}
+
+.custom-toast img:hover {
+  transform: scale(1.05);
+}
+
+/* Responsive design for mobile */
+@media (max-width: 768px) {
+  .custom-toast {
+    max-width: 90% !important;
+    margin: 0 10px;
+  }
+  
+  .custom-toast h4 {
+    font-size: 16px !important;
+  }
+  
+  .custom-toast button {
+    padding: 10px 24px !important;
+    font-size: 16px !important;
+  }
+}
