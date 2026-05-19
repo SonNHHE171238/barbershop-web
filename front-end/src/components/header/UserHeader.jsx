@@ -38,7 +38,7 @@ export default function UserHeader() {
   const handleLogout = async () => {
     await logout();
     await clearCart(); // Reset cart khi logout
-    navigate("/login");
+    navigate("/");
   };
 
   const scrollToSection = (sectionId) => {

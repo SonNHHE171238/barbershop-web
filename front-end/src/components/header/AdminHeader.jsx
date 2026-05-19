@@ -10,9 +10,9 @@ const AdminHeader = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
   };
 
   // Generate breadcrumb based on current path
