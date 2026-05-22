@@ -28,12 +28,17 @@ const userSchema = new mongoose.Schema(
     isVerified: { type: Boolean, default: false },
     otpHash: { type: String, select: false },
     otpExpires: { type: Date },
+    resetTokenHash: { type: String, select: false },
+    resetTokenExpires: { type: Date },
   },
   { timestamps: true }
 );
 
 userSchema.pre('save', async function hashPassword(next) {
   if (!this.isModified('password')) {
+    return next();
+  }
+  if (typeof this.password === 'string' && /^\$2[aby]\$/.test(this.password)) {
     return next();
   }
   try {

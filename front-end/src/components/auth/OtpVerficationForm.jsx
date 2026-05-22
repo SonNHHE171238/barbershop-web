@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Form, Input, Button, Space } from 'antd';
 import {resend, verify} from "../../services/api.js";
 import {useNavigate} from "react-router-dom";
+import {useAuth} from "../../context/AuthContext.jsx";
 import { toast } from "react-toastify";
 
 export default function OtpVerificationForm({ email }) {
@@ -9,11 +10,20 @@ export default function OtpVerificationForm({ email }) {
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
+
+  const redirectAfterAuth = (sessionUser) => {
+    if (sessionUser.role === "admin") navigate("/admin");
+    else if (sessionUser.role === "barber") navigate("/barber");
+    else navigate("/");
+  };
+
   const verifyOtp = async () => {
     try {
       setLoading(true);
-      await verify({email, otp});
-      toast.success('Email verification successful! 🎉 You can now login to your account.', {
+      await verify({ email: email.trim(), otp: otp.trim() });
+      const sessionUser = await refreshUser();
+      toast.success(`Xác thực thành công! Chào mừng ${sessionUser.name || sessionUser.email}! 🎉`, {
         position: "top-right",
         autoClose: 4000,
         hideProgressBar: false,
@@ -21,7 +31,7 @@ export default function OtpVerificationForm({ email }) {
         pauseOnHover: true,
         draggable: true,
       });
-      navigate('/login');
+      redirectAfterAuth(sessionUser);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Email verification failed. Please check your OTP code.', {
         position: "top-right",

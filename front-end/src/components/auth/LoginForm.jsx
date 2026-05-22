@@ -1,5 +1,5 @@
 import { Form, Input, Button } from "antd";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { initiateGoogleLogin } from "../../services/api.js";
 import { toast } from "react-toastify";
@@ -7,6 +7,8 @@ import { toast } from "react-toastify";
 const LoginForm = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const initialEmail = location.state?.email || "";
 
   const onFinish = async ({ email, password }) => {
     try {
@@ -40,11 +42,14 @@ const LoginForm = () => {
   };
 
   return (
-    <Form layout="vertical" onFinish={onFinish}>
+    <Form layout="vertical" onFinish={onFinish} initialValues={{ email: initialEmail }}>
       <Form.Item
         label="Email"
         name="email"
-        rules={[{ required: true, message: "Please input your email" }]}
+        rules={[
+          { required: true, message: "Please input your email" },
+          { type: "email", message: "Invalid email format" },
+        ]}
       >
         <Input placeholder="Enter your email" />
       </Form.Item>

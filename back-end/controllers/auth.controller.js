@@ -1,17 +1,30 @@
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/user.model');
 const { setAuthCookies, clearAuthCookies } = require('../utils/authCookies');
 const { generateOtp, getOtpTtlMs } = require('../utils/otp');
 const { notifyRegistrationOtp } = require('../services/registration-notify.service');
+const { sendPasswordResetEmail } = require('../services/email.service');
+
+const forgotPasswordMessage =
+  'If an account exists with this email, a password reset link has been sent.';
+
+const getResetTokenTtlMs = () => {
+  const minutes = parseInt(process.env.RESET_TOKEN_EXPIRES_MINUTES || '60', 10);
+  return (Number.isFinite(minutes) && minutes > 0 ? minutes : 60) * 60 * 1000;
+};
 
 async function setUserOtp(user, plainOtp) {
   const hash = await bcrypt.hash(plainOtp, 10);
   user.otpHash = hash;
   user.otpExpires = new Date(Date.now() + getOtpTtlMs());
   await user.save();
-  notifyRegistrationOtp(user.email, plainOtp);
+  return notifyRegistrationOtp(user.email, plainOtp);
 }
+
+const otpEmailFailedMessage =
+  'Could not send OTP email. Check EMAIL_USER/EMAIL_PASS in server config, or use Resend OTP.';
 
 const accessExpires = () => process.env.JWT_ACCESS_EXPIRES || '15m';
 const refreshExpires = () => process.env.JWT_REFRESH_EXPIRES || '7d';
@@ -66,7 +79,10 @@ exports.register = async (req, res) => {
       user.role = 'customer';
       user.status = 'active';
       user.isVerified = false;
-      await setUserOtp(user, plainOtp);
+      const notify = await setUserOtp(user, plainOtp);
+      if (!notify.sent) {
+        return res.status(502).json({ message: otpEmailFailedMessage });
+      }
       return res.status(200).json({
         message: 'Please verify your email with the new OTP code.',
       });
@@ -81,8 +97,10 @@ exports.register = async (req, res) => {
       status: 'active',
       isVerified: false,
     });
-    await user.save();
-    await setUserOtp(user, plainOtp);
+    const notify = await setUserOtp(user, plainOtp);
+    if (!notify.sent) {
+      return res.status(502).json({ message: otpEmailFailedMessage });
+    }
 
     return res.status(201).json({
       message: 'Registration successful. Please check your email for the OTP code.',
@@ -133,8 +151,24 @@ exports.verifyOtp = async (req, res) => {
       { $set: { isVerified: true }, $unset: { otpHash: 1, otpExpires: 1 } }
     );
 
+    const verifiedUser = await User.findById(user._id);
+    if (process.env.JWT_SECRET && process.env.JWT_REFRESH_SECRET) {
+      const accessToken = signAccessToken(verifiedUser._id.toString(), verifiedUser.role);
+      const refreshToken = signRefreshToken(verifiedUser._id.toString());
+      setAuthCookies(res, accessToken, refreshToken);
+    }
+
     return res.status(200).json({
-      message: 'Email verification successful. You can now log in.',
+      message: 'Email verification successful.',
+      user: {
+        id: verifiedUser._id.toString(),
+        name: verifiedUser.name,
+        email: verifiedUser.email,
+        phone: verifiedUser.phone,
+        role: verifiedUser.role,
+        avatarUrl: verifiedUser.avatarUrl || '',
+        status: verifiedUser.status,
+      },
     });
   } catch (error) {
     console.error(error);
@@ -252,6 +286,93 @@ exports.refreshToken = async (req, res) => {
     setAuthCookies(res, accessToken, refreshToken);
 
     return res.status(200).json({ message: 'Token refreshed' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email?.trim()) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const emailNorm = email.toLowerCase().trim();
+    const user = await User.findOne({
+      email: emailNorm,
+      isVerified: true,
+      status: 'active',
+    });
+
+    if (!user) {
+      return res.status(200).json({ message: forgotPasswordMessage });
+    }
+
+    const plainToken = crypto.randomBytes(32).toString('hex');
+    user.resetTokenHash = await bcrypt.hash(plainToken, 10);
+    user.resetTokenExpires = new Date(Date.now() + getResetTokenTtlMs());
+    await user.save();
+
+    const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
+    const resetLink = `${clientUrl}/reset-password?id=${user._id}&token=${plainToken}`;
+
+    try {
+      await sendPasswordResetEmail(user.email, resetLink);
+      console.log(`[Reset] Link sent to ${user.email}`);
+    } catch (err) {
+      console.error(`[Reset] Failed to send email to ${user.email}:`, err.message);
+      return res.status(502).json({
+        message: 'Could not send password reset email. Please try again later.',
+      });
+    }
+
+    return res.status(200).json({ message: forgotPasswordMessage });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { userId, token, newPassword } = req.body;
+
+    if (!userId || !token || !newPassword) {
+      return res.status(400).json({
+        message: 'User id, token, and new password are required',
+      });
+    }
+
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(userId).select('+resetTokenHash +resetTokenExpires');
+    if (!user || user.status !== 'active') {
+      return res.status(400).json({ message: 'Invalid or expired reset link' });
+    }
+
+    if (!user.resetTokenHash || !user.resetTokenExpires) {
+      return res.status(400).json({ message: 'Invalid or expired reset link' });
+    }
+
+    if (new Date() > user.resetTokenExpires) {
+      return res.status(400).json({ message: 'Reset link has expired. Please request a new one.' });
+    }
+
+    const match = await bcrypt.compare(String(token), user.resetTokenHash);
+    if (!match) {
+      return res.status(400).json({ message: 'Invalid or expired reset link' });
+    }
+
+    user.password = newPassword;
+    user.resetTokenHash = undefined;
+    user.resetTokenExpires = undefined;
+    await user.save();
+
+    return res.status(200).json({ message: 'Password reset successful. You can now log in.' });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: error.message });

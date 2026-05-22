@@ -19,7 +19,7 @@ export default function RegisterForm({ onOtpStage }) {
         pauseOnHover: true,
         draggable: true,
       });
-      onOtpStage(values.email);
+      onOtpStage(values.email.trim().toLowerCase());
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed. Please try again.', {
         position: "top-right",

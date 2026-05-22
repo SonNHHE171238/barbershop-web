@@ -62,7 +62,10 @@ export default function ResetPasswordForm() {
         <Form.Item
           label="New Password"
           name="newPassword"
-          rules={[{ required: true, message: "Please enter a new password" }]}
+          rules={[
+            { required: true, message: "Please enter a new password" },
+            { min: 6, message: "Password must be at least 6 characters" },
+          ]}
         >
           <Input.Password placeholder="Enter new password" />
         </Form.Item>

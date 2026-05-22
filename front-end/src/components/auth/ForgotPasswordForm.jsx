@@ -7,7 +7,7 @@ export default function ForgotPasswordForm() {
 
   const onFinish = async (values) => {
     try {
-      await forgotPassword({ email: values.email });
+      await forgotPassword({ email: values.email.trim().toLowerCase() });
       toast.success('Password reset link sent! 📧 Please check your email inbox.', {
         position: "top-right",
         autoClose: 5000,

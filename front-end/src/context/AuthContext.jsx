@@ -21,18 +21,22 @@ export const AuthProvider = ({children}) => {
       setLoading(false);
     }
   };
+  const applySessionUser = (sessionUser) => {
+    if (user && user.id !== sessionUser.id) {
+      localStorage.removeItem(`selectedAddress_${user.id}`);
+    }
+    setUser(sessionUser);
+    return sessionUser;
+  };
+
+  const refreshUser = async () => {
+    const res = await getMe();
+    return applySessionUser(res.data.user);
+  };
+
   const login = async (credentials) => {
     await loginUser(credentials);
-    const res = await getMe();       // 👈 gọi trực tiếp luôn ở đây
-    
-    // Xóa localStorage của user cũ nếu có
-    if (user && user.id !== res.data.user.id) {
-      localStorage.removeItem(`selectedAddress_${user.id}`);
-      console.log('🧹 Cleared previous user selectedAddress from localStorage');
-    }
-    
-    setUser(res.data.user);
-    return res.data.user;            // 👈 trả lại user để LoginForm dùng
+    return refreshUser();
   };
 
   const logout = async () => {
@@ -51,7 +55,7 @@ export const AuthProvider = ({children}) => {
   };
 
   return (
-    <AuthContext.Provider value={{user, login, logout, loading}}>
+    <AuthContext.Provider value={{user, login, logout, refreshUser, loading}}>
       {children}
     </AuthContext.Provider>
   );
